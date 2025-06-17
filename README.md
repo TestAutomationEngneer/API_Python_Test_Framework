@@ -108,3 +108,4 @@ Gotowe! 🎉 Możesz teraz rozwijać projekt, dodać filtrowanie, edycję (PUT),
 
 testy:
 poetry run pytest tests/test_main.py
+pytest -s
