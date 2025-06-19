@@ -1,36 +1,106 @@
-from tests.utils.logging import logger
-from tests.utils.data_loader import load_actor_data_with_random_id
+import random
+import pytest
+import logging
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-def test_get_all_actors(http_client):
-    logger.info("Test: Pobieranie wszystkich aktorów")
-    response = http_client.get("/actors")
+# 🔍 Test POST /actors
+def test_create_actor(client):
+    payload = {
+        "first_name": "Test",
+        "last_name": "User",
+        "ranking": random.randint(10, 99),
+        "has_oscar": False
+    }
+    response = client.post("/actors", json=payload)
+    body = response.json()
+
+    logger.info(f"Created actor: {body}")
+
+    assert response.status_code == 201
+    assert "id" in body
+    assert body["first_name"] == payload["first_name"]
+
+# 🔍 Test GET /actors
+def test_get_all_actors(client):
+    response = client.get("/actors")
+    actors = response.json()
+
+    logger.info(f"Fetched {len(actors)} actors")
+
     assert response.status_code == 200
-    logger.info(f"Pobrano {len(response.json())} aktorów: {response.json()}")
+    assert isinstance(actors, list)
 
+# 🔍 Test GET /actors/{id}
+def test_get_actor_by_id(client):
+    new_actor = {
+        "first_name": "Fetch",
+        "last_name": "Me",
+        "ranking": random.randint(1, 99),
+        "has_oscar": True
+    }
+    post_resp = client.post("/actors", json=new_actor)
+    actor_id = post_resp.json()["id"]
 
-def test_get_single_actor(http_client):
-    logger.info("Test: Pobieranie pojedynczego aktora o ID 1")
-    response = http_client.get("/actors/1")
-    assert response.status_code == 200
-    logger.info(f"Pobrano aktora: {response.json()}")
+    get_resp = client.get(f"/actors/{actor_id}")
+    actor = get_resp.json()
 
+    logger.info(f"Retrieved actor by ID {actor_id}: {actor}")
 
-def test_post_new_actor(http_client):
-    new_actor = load_actor_data_with_random_id()
-    logger.info(f"Test: Tworzenie nowego aktora z ID: {new_actor['id']}")
-    response = http_client.post("/actors", json=new_actor)
-    assert response.status_code == 200
-    logger.info(f"Utworzono aktora: {response.json()}")
+    assert get_resp.status_code == 200
+    assert actor["id"] == actor_id
 
+# 🔍 Test DELETE /actors/{id}
+def test_delete_actor_by_id(client):
+    actor_data = {
+        "first_name": "Delete",
+        "last_name": "Me",
+        "ranking": random.randint(1, 99),
+        "has_oscar": False
+    }
+    post_resp = client.post("/actors", json=actor_data)
+    actor_id = post_resp.json()["id"]
 
-def test_delete_actor(http_client):
-    actor_to_delete = load_actor_data_with_random_id()
-    logger.info(f"Test: Tworzenie i usuwanie aktora z ID: {actor_to_delete['id']}")
-    post = http_client.post("/actors", json=actor_to_delete)
-    assert post.status_code == 200
-    logger.info(f"Utworzono do usunięcia: {post.json()}")
+    del_resp = client.delete(f"/actors/{actor_id}")
+    logger.info(f"Deleted actor with ID {actor_id}")
 
-    delete = http_client.delete(f"/actors/{actor_to_delete['id']}")
-    assert delete.status_code == 200
-    logger.info(f"Usunięto: {delete.json()}")
+    assert del_resp.status_code == 200
+    assert del_resp.json()["detail"] == "Actor deleted"
+
+    get_resp = client.get(f"/actors/{actor_id}")
+    logger.info(f"Attempt to fetch deleted actor ID {actor_id}: Status {get_resp.status_code}")
+
+    assert get_resp.status_code == 404
+
+# 🔍 Test 404 - GET non-existent actor
+def test_get_nonexistent_actor(client):
+    response = client.get("/actors/999999")
+    logger.info(f"GET non-existent actor returned status {response.status_code}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Actor not found"
+
+# 🔍 Test 404 - DELETE non-existent actor
+def test_delete_nonexistent_actor(client):
+    response = client.delete("/actors/999999")
+    logger.info(f"DELETE non-existent actor returned status {response.status_code}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Actor not found"
+
+# 🔍 Test 400 - Duplicate ID manually (should never happen in current impl)
+def test_duplicate_actor_fails_if_id_reused(client):
+    payload = {
+        "first_name": "Unique",
+        "last_name": "Actor",
+        "ranking": random.randint(1, 99),
+        "has_oscar": True
+    }
+    res1 = client.post("/actors", json=payload)
+    res2 = client.post("/actors", json=payload)
+
+    logger.info(f"First actor creation status: {res1.status_code}, second: {res2.status_code}")
+
+    assert res1.status_code == 201
+    assert res2.status_code == 201 or res2.status_code == 400

@@ -1,21 +1,42 @@
-from typing import Dict
-from src.models.actor import Actor
+from typing import Dict, Optional
+from src.models.actor import ActorCreate, ActorResponse
 
-actors_db: Dict[int, Actor] = {
-    1: Actor(id=1, first_name="Leonardo", last_name="DiCaprio", ranking=5, has_oscar=True),
-    2: Actor(id=2, first_name="Tom", last_name="Hanks", ranking=2, has_oscar=True),
-    3: Actor(id=3, first_name="Meryl", last_name="Streep", ranking=3, has_oscar=True),
-    4: Actor(id=4, first_name="Brad", last_name="Pitt", ranking=7, has_oscar=True),
-    5: Actor(id=5, first_name="Scarlett", last_name="Johansson", ranking=8, has_oscar=False),
-}
-def get_all() -> list[Actor]:
-    return list(actors_db.values())
+# In-memory "database"
+_actors: Dict[int, ActorResponse] = {}
 
-def get(actor_id: int) -> Actor | None:
-    return actors_db.get(actor_id)
+# Internal ID counter
+_id_counter = 5
 
-def add(actor: Actor):
-    actors_db[actor.id] = actor
+# Initial test data
+for i, (fn, ln, rank, oscar) in enumerate([
+    ("Tom", "Hanks", 1, True),
+    ("Morgan", "Freeman", 2, False),
+    ("Meryl", "Streep", 3, True),
+    ("Leonardo", "DiCaprio", 4, True),
+    ("Natalie", "Portman", 5, True),
+], start=1):
+    _actors[i] = ActorResponse(id=i, first_name=fn, last_name=ln, ranking=rank, has_oscar=oscar)
+
+
+def generate_next_id() -> int:
+    global _id_counter
+    _id_counter += 1
+    return _id_counter
+
+
+def get(actor_id: int) -> Optional[ActorResponse]:
+    return _actors.get(actor_id)
+
+
+def add_with_id(actor_id: int, payload: ActorCreate) -> ActorResponse:
+    actor = ActorResponse(id=actor_id, **payload.dict())
+    _actors[actor_id] = actor
+    return actor
+
+
+def get_all():
+    return list(_actors.values())
+
 
 def delete(actor_id: int):
-    del actors_db[actor_id]
+    _actors.pop(actor_id, None)

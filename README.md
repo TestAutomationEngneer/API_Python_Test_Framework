@@ -109,3 +109,16 @@ Gotowe! 🎉 Możesz teraz rozwijać projekt, dodać filtrowanie, edycję (PUT),
 testy:
 poetry run pytest tests/test_main.py
 pytest -s
+
+
+poetry run uvicorn src.main:app --reload
+
+| Element        | Znaczenie                                                                 |
+| -------------- | ------------------------------------------------------------------------- |
+| `poetry run`   | Uruchamia kolejną komendę wewnątrz środowiska Poetry (zależności, Python) |
+| `uvicorn`      | Lekki serwer ASGI, uruchamiający aplikacje FastAPI                        |
+| `src.main:app` | Wskazuje plik `src/main.py` i obiekt `app = FastAPI()`                    |
+| `--reload`     | Włącza auto-przeładowanie kodu przy zmianach (dla developera)             |
+
+plik .env i run.py są odpowiedzialne za ustawienie portu, jak chce uruchomić z tego pliku to komenda
+poetry run python run.py
